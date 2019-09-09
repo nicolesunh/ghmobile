@@ -1,0 +1,254 @@
+<template>
+  <div class="contentBox" id="menuList">
+    <div class="listContent">
+      <div class="menuTitle">
+        <div class="listLitle">
+          <span v-if="isApp">所有应用</span>
+          <span v-if="!isApp">内容分类</span>
+        </div>
+        <div class="layout">
+          <div class="transition-menu">
+            <Menu theme="light" mode="vertical" :accordion="true" @on-select="selectMenuItem">
+              <Submenu
+                v-for="(item,index) in fromOnlineApplication[1] "
+                :key="index"
+                :name="(index+1)"
+              >
+                <template slot="title">{{item.title}}</template>
+                <MenuItem
+                  v-for="(v,i) in item.children"
+                  :key="(index+1)+'-'+(i+1)"
+                  :name="(index+1)+'-'+(i+1)"
+                >{{v}}</MenuItem>
+              </Submenu>
+            </Menu>
+          </div>
+        </div>
+      </div>
+      <!-- 政策公告 -->
+      <div class="policyAnn" v-if="!isApp">
+        <div class="list" v-for="(item,index) in fromOnlineApplication[0]" :key="index">
+          <router-link :to="`/infoDetail/${item.ID}`">
+            <P>{{item.post_title}}</P>
+            <p v-html="item.post_content"></p>
+          </router-link>
+          <!-- 标签 -->
+          <div class="markSpan">
+            <!-- 接口暂无 -->
+            <!-- <span style="margin-right:10px;font-size: 12px;" class="readNums">
+                <van-icon name="eye-o" size="14px" />
+                <span>1ddc11</span>
+              </span>
+              <span style="margin-right:10px;font-size: 12px;" class="bookmark">
+                <van-icon name="bookmark-o" size="14px" />
+                <span>中国装</span>
+            </span>-->
+            <span style="margin-right:10px;font-size: 12px;" class="bookmark">
+              <van-icon name="calender-o" size="14px" />
+              <span>{{item.post_date}}</span>
+            </span>
+            <span style="margin-right:10px;font-size: 12px;" class="bookmark">
+              <van-icon name="bookmark-o" size="14px" />
+              <span @click="goURL(item.source_link)">{{item.source}}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <!-- 在线应用 -->
+      <div class="application" v-if="isApp">
+        <van-row gutter="15">
+          <van-col span="12" v-for="(item) in fromOnlineApplication[0]" :key="item.ID">
+            <div class="onlyPic">
+              <router-link :to="`/appDetail/${item.ID}`">
+                <div class="top">
+                  <img :src="checkImg(item.app_logo)" />
+                  <span class="post_title">{{item.post_title}}</span>
+                </div>
+              </router-link>
+            </div>
+          </van-col>
+        </van-row>
+      </div>
+    </div>
+
+    <div class="articleList" v-if="false"></div>
+    <div class="load" v-if="fromOnlineApplication[2]">
+      <van-loading size="24px">加载中...</van-loading>
+    </div>
+    <div class="noMore" v-if="fromOnlineApplication[3]">
+      <span>没有更多信息了...</span>
+    </div>
+  </div>
+</template>
+<script>
+import { getAppQYYY } from "../api/api.js";
+import { isImg } from "@/utils/common";
+export default {
+  name: "menuList",
+  props: ["fromOnlineApplication"],
+  data() {
+    return {
+      isApp: false,
+      img_url: process.env.VUE_APP_IMG_URL
+    };
+  },
+  created() {
+    let curURL = location.href;
+    // 区分在线应用 和 政策公告
+    this.isApp = curURL.includes("onlineApplication") ? true : false;
+  },
+  mounted() {
+    //滚动监听事件
+    window.addEventListener("scroll", this.menu);
+  },
+  destroyed() {},
+  watch: {},
+  methods: {
+    // 点击的菜单项
+    selectMenuItem(name) {
+      this.$emit("selectMenuItemIndex", name);
+    },
+    // 调转到详情页
+    goAppDetail() {
+      this.$router.push("/infoDetail/1");
+    },
+    // 处理图片异常不显示
+    checkImg(val) {
+      return isImg(val);
+    }
+  }
+};
+</script>
+<style lang='less' scoped>
+/deep/.ivu-menu-light {
+  background: #fafcff;
+}
+.ivu-menu {
+  width: 100% !important;
+  height: 470px;
+  overflow: scroll;
+}
+/deep/.ivu-menu-vertical.ivu-menu-light:after {
+  content: "";
+  display: block;
+  width: 0.02667rem;
+  height: 100%;
+  background: transparent;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+}
+.ivu-menu-vertical {
+  /deep/ .ivu-menu-item,
+  /deep/.ivu-menu-submenu-title {
+    padding: 10px 5px;
+    padding-left: 10px !important;
+    box-sizing: border-box;
+    text-align: left;
+  }
+  /deep/.ivu-menu-submenu-title-icon {
+    right: 0px;
+  }
+}
+
+#menuList {
+  padding-bottom: 45px;
+  box-sizing: border-box;
+  padding: 15px;
+  background-color: #fafcff;
+  .listContent {
+    text-align: left;
+    padding-top: 0px;
+    overflow: hidden;
+    margin-top: 10px;
+
+    .transitionOut {
+      transform: translateX(-130px);
+    }
+    .menuTitle {
+      width: 25%;
+      position: fixed;
+      top: 85px;
+      left: 15px;
+      color: #5aa3e8;
+      z-index: 10000;
+      box-sizing: border-box;
+      border-bottom: none;
+      background-color: #fafcff;
+      .listLitle {
+        height: 40px;
+        line-height: 40px;
+        background-color: #fafcff;
+        padding-left: 10px;
+      }
+    }
+
+    .layout {
+      width: 100%;
+      height: auto;
+      float: left;
+      // transition: all 0.5s;
+      // border-top: 1px solid #dcdee2;
+      // border-bottom: 1px solid #dcdee2;
+    }
+    /deep/.ivu-menu{
+      max-height: 350px;
+      overflow: scroll;
+    }
+    .application {
+      float: right;
+      width: 70%;
+      .alignAndBot15;
+      .onlyPic {
+        height: 120px;
+        padding: 10px 0;
+        border-bottom: 1px dashed #eee;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+        img {
+          width: 100%;
+          height: 60px;
+        }
+        .post_title {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+  .load,
+  .noMore {
+    text-align: center;
+  }
+  .list {
+    margin-bottom: 20px;
+    padding-left: 105px;
+
+    p {
+      &:first-child {
+        font-size: 14px;
+        margin-bottom: 10px;
+        color: #000;
+      }
+      &:nth-child(2) {
+        color: #555;
+        margin-bottom: 10px;
+        font-size: 14px;
+        // text-indent: 1em;
+      }
+
+      // .ellipsis;
+      margin-bottom: 5px;
+    }
+    span {
+      color: #999;
+    }
+    .markSpan {
+      font-size: 12px;
+    }
+  }
+}
+</style>
+
+

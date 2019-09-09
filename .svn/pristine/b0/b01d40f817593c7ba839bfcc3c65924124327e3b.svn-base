@@ -1,0 +1,300 @@
+<template>
+  <div class="contentBox" id="policyAnn">
+    <div class="main">
+      <div class="content">
+        <van-tabs
+          class="tabsIndex"
+          background="#fafcff"
+          color="#5aa3e8"
+          v-model="active"
+          swipeable
+          :sticky="true"
+          :offset-top="38"
+          :ellipsis="false"
+          @change="tabChange"
+        >
+          <van-tab v-for="(item,index) in tabs" :title="item" :key="index">
+            <menuList
+              :fromOnlineApplication="[policyAnnData,menuList,load,noMore]"
+              @selectMenuItemIndex="selectMenuItemIndex"
+            ></menuList>
+          </van-tab>
+        </van-tabs>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import menuList from "@/components/menuList";
+import { getPolicyAnnZC } from "../../api/api.js";
+export default {
+  name: "policyAnn",
+  components: { menuList },
+  data() {
+    return {
+      active: 0,
+      selectMenuIndex: 0,
+      type: "",
+      page: 1,
+      // 无更多信息
+      noMore: false,
+      load: true,
+      // 设置一个开关来避免重负请求数据
+      isExtending: true,
+      tabs: ["政策", "政策解读", "通知", "公告"],
+      // 企业应用  信息查询列表数据
+      policyAnnData: [],
+      // menu数据
+      menuList: [],
+      policyAnnMenu: [
+        {
+          title: "行业主题",
+          children: [
+            "港口",
+            "口岸",
+            "水路",
+            "陆路",
+            "航空",
+            "贸易",
+            "财务",
+            "海事"
+          ]
+        },
+        {
+          title: "来源单位",
+          children: [
+            "海关总署",
+            "上海海关",
+            "交通运输部",
+            "上海交通委",
+            "中国政府",
+            "上海政府",
+            "国家税务总局",
+            "上海国税局",
+            "国家邮政局",
+            "上海市邮政管理局",
+            "中国民航局"
+          ]
+        }
+      ],
+      // 每个模块首页loading
+      indexLoading: true,
+      img_url: process.env.VUE_APP_IMG_URL
+    };
+  },
+  created() {
+    this.getHomeAll();
+    this.menuList = this.policyAnnMenu;
+    window.addEventListener("scroll", this.menu);
+  },
+  mounted() {},
+  //销毁该事件 防止离开此页面时仍触发srcoll事件，重复触发请求
+  destroyed() {
+    window.removeEventListener("scroll", this.menu);
+  },
+  methods: {
+    // 接受子组件传来的被点击的menu的name 点击修改接口参数从首页重新加载
+    selectMenuItemIndex(val) {
+      // 切换menu时重置加载 和 无更多信息 提示的效果
+      this.load = true;
+      this.noMore = false;
+
+      this.selectMenuIndex = val;
+      this.getType();
+      this.page = 1;
+      this.policyAnnData = [];
+      this.extendGetInfoList();
+    },
+    //外部链接
+    goURL(url) {
+      location.href = url;
+    },
+    // 首页
+    getHomeAll() {
+      let that = this;
+      let data = {};
+      that.type = "zc";
+      this.extendGetInfoList();
+    },
+    // 切换tab触发
+    tabChange(name, title) {
+      this.page = 1;
+      this.type = "";
+      this.policyAnnData = [];
+      this.noMore = false;
+      this.load = true;
+      switch (name) {
+        case 0:
+          // zc
+          this.type = "zc";
+          break;
+        case 1:
+          //政策解读
+          this.type = "zcjd";
+          break;
+        case 2:
+          // 通知
+          this.type = "tz";
+          break;
+        case 3:
+          // 公告
+          this.type = "gg";
+          break;
+      }
+      // 加载列表页首屏
+      this.extendGetInfoList();
+      // 切换tab触发滚动加载数据
+      window.addEventListener("scroll", this.menu);
+    },
+    //请第一页及其以后的数据
+    extendGetInfoList() {
+      let that = this;
+      let data = { type: that.type, page: that.page };
+      getPolicyAnnZC(data)
+        .then(resData => {
+          that.policyAnnData = that.policyAnnData.concat(
+            resData.data.data.data
+          );
+
+          console.log(resData.data.data.data, "that.policyAnnData");
+          that.isExtending = true;
+          that.page++;
+          // 当返回列表长度<10 或 无数据返回 则无更多信息  即无分页
+          if (
+            resData.data.data.data.length < 8 &&
+            resData.data.data.data.length > 0
+          ) {
+            // 内容过少 可以一览 无需提示信息
+            that.isExtending = false;
+            this.noMore = false;
+            this.load = false;
+          } else if (
+            resData.data.data.data.length < resData.data.data.per_page ||
+            resData.data.data.data === undefined ||
+            resData.data.data.data.length == 0
+          ) {
+            that.isExtending = false;
+            this.noMore = true;
+            this.load = false;
+          }
+        })
+        .catch(err => {
+          that.isExtending = false;
+        });
+    },
+    // 监听滚动加载数据
+    menu() {
+      if (this.page != 1) {
+        let that = this;
+        that.scroll =
+          document.body.scrollTop || document.documentElement.scrollTop;
+        let docH =
+          document.body.scrollHeight || document.documentElement.scrollHeight;
+        let windowH = window.screen.height;
+        if (that.scroll + windowH >= docH && this.isExtending) {
+          setTimeout(() => {
+            that.extendGetInfoList();
+          }, 50);
+        }
+      }
+    },
+    // 根据子组件传的被点击的menu的name 修改接口参数
+    getType() {
+      //  "1-7": "my"   ------------------参数未知-----------------------
+      let arr = [
+        {
+          "1-1": "gk",
+          "1-2": "ka",
+          "1-3": "sl",
+          "1-4": "ll",
+          "1-5": "hk",
+          "1-6": "my",
+          "1-7": "my",
+          "1-8": "hs",
+          "2-1": "hgzs",
+          "2-2": "shhg",
+          "2-3": "gk",
+          "2-4": "shjtw",
+          "2-5": "zgzf",
+          "2-6": "shzf",
+          "2-7": "gjsw",
+          "2-8": "shgs",
+          "2-9": "gjyz",
+          "2-10": "shyz",
+          "2-11": "zgmh",
+        }
+      ];
+
+      // 修改menu参数
+      Object.keys(arr[0]).forEach(e => {
+        console.log(e, "Object");
+        if (e === this.selectMenuIndex) {
+          this.type = arr[0][e];
+          console.log(e, this.type, "obj2");
+        }
+        // e === this.selectMenuIndex?return this.type=obj.e : ""
+      });
+    }
+  }
+};
+</script>
+<style lang="less" >
+</style>
+<style lang="less" scoped>
+#policyAnn {
+  padding-bottom: 45px;
+  box-sizing: border-box;
+  background-color: #fafcff;
+  .indexContent {
+    // padding: 10px 20px;
+    padding: 15px;
+    padding-top: 15px;
+    // padding-top: 55px;
+    img {
+      width: 100%;
+      height: 160px;
+    }
+    .appContent {
+      .alignAndBot15;
+      margin-top: 10px;
+      .application {
+        .alignAndBot15;
+
+        padding-top: 10px;
+        .onlyPic {
+          height: 120px;
+          padding: 10px 0;
+          border-bottom: 1px dashed #eee;
+          box-sizing: border-box;
+          margin-bottom: 10px;
+          img {
+            width: 100%;
+            height: 60px;
+          }
+          .post_title {
+            font-size: 12px;
+          }
+        }
+      }
+      // 最新查询
+      .hotSearch {
+        .alignAndBot15;
+        .search {
+          padding: 5px 0;
+          font-size: 14px;
+          .smallPic {
+            .picTopBot;
+            .top {
+              padding-left: 50px;
+            }
+            img {
+              width: 25px;
+              height: 25px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</style>
